@@ -1,0 +1,124 @@
+#include <avr/io.h>
+
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <avr/pgmspace.h>
+#define F_CPU 1000000UL  // 1 MHz
+#include <util/delay.h>
+#define TST (!(PINC&(1<<PC0)))
+
+void pwm(char chan, int  val);
+struct LED
+{
+	long y1, y2;
+	int x1, x2;
+	long stufe;
+};
+struct LED led[4];
+unsigned char CH;
+unsigned char b = 0;
+unsigned char advent = 0;
+unsigned char alt = 0;
+unsigned char act = 0;
+unsigned char edge = 0;
+unsigned char edgepos = 0;
+
+void Stufe1()
+{
+	int c;
+	act = TST;
+	edge = act ^ alt;
+	edgepos = edge & act;
+	alt = act;
+	
+	if(TST && edgepos)
+	{
+		if(advent < 4)
+		{
+			advent++;
+		}else{
+			advent = 1;
+		}
+		pwm(0,0);
+		pwm(1,0);
+		pwm(2,0);
+		pwm(3,0);
+	}
+	
+	for(CH = 0; CH<advent;CH++)
+	{
+		led[CH].y2 = ((rand()/(RAND_MAX/255) * 128));
+		led[CH].stufe = ((led[CH].y2 - led[CH].y1)/128.0);
+	}
+	
+	for(c = 0; c<128;c++)
+	{
+		for(CH = 0; CH<advent; CH++)
+		{
+			led[CH].y1 +=led[CH].stufe;
+			pwm(CH,(int) (led[CH].y1/256) );
+			_delay_ms(20-((advent - 1)*5));
+		}
+	}
+}
+
+ 
+int main (void) //Start main
+ {
+	DDRB = 0x08; // OC1A und OC1B auf output gesetzt rest ist input 
+ 	PINB = 0x00; // alle Port_B auf low gesetzt
+	
+	DDRC = 0x00; // alle Port_D auf input gesetzt 
+ 	PINC = 0xFF; // alle Port_c auf high gesetzt
+	
+	DDRD = 0x68; // OC0A und OC0B sind auf output gesetzt rest ist input 
+ 	//PORTD = 0x00;// alle Port_D auf LOW gesetzt 
+	
+	//PORTD = 0xFF;
+	
+	TCCR0A = 0xA1;
+	TCCR0B = 0x02;
+	
+	OCR0A = 0x20;
+	OCR0B = 0x80;
+	
+	//ASSR=0;
+	TCCR2A = 0xA1;
+	TCCR2B = 0x02;
+	
+	OCR2A = 0xF0;
+	OCR2B = 0x0C;
+	
+	//unsigned char a = 0;
+	
+	
+	while(1)
+	{
+		Stufe1();
+	}
+ }//ende main
+ 
+ 
+ 
+ 
+ void pwm(char chan, int val)
+ {
+	 switch(chan)
+	 {
+		case 0:
+			OCR0A = val;	
+		break;
+		
+		case 1:
+			OCR2A = val;
+		break;
+		case 2:
+			OCR0B = val;
+		break;
+		case 3:
+			OCR2B = val;
+		break;
+	 }
+ }
